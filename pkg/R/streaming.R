@@ -149,23 +149,34 @@ reduce.loop =
     invisible()}
 
 # the main function for the hadoop backend
+# NOTE: HADOOP_HOME is deprecated by Hadoop, so using another name may reduce the confusion..
 
 hadoop.cmd = function() {
   hadoop_cmd = Sys.getenv("HADOOP_CMD")
-  if( hadoop_cmd == "") {
+  if (!nzchar(hadoop_cmd)) {
     hadoop_home = Sys.getenv("HADOOP_HOME")
-    if(hadoop_home == "") stop("Please make sure that the env. variable HADOOP_CMD or HADOOP_HOME are set")
-    file.path(hadoop_home, "bin", "hadoop")}
-  else hadoop_cmd}
+    if (!nzchar(hadoop_home)) hadoop_home = "/usr/lib/hadoop"
+    hadoop_cmd = file.path(hadoop_home, "bin", "hadoop")
+    if (!file.exists(hadoop_cmd)) hadoop_cmd = ""
+  }
+  if (!nzchar(hadoop_cmd))
+    stop("Please make sure that the env. variables HADOOP_CMD or HADOOP_HOME are set correctly")
+  hadoop_cmd
+}
 
 hadoop.streaming = function() {
   hadoop_streaming = Sys.getenv("HADOOP_STREAMING")
-  if(hadoop_streaming == ""){
+  if (!nzchar(hadoop_streaming)) {
     hadoop_home = Sys.getenv("HADOOP_HOME")
-    if(hadoop_home == "") stop("Please make sure that the env. variable HADOOP_STREAMING or HADOOP_HOME are set")
-    stream.jar = list.files(path =  file.path(hadoop_home, "contrib", "streaming"), pattern = "jar$", full.names = TRUE)
-    paste(hadoop.cmd(), "jar", stream.jar)}
-  else paste(hadoop.cmd(), "jar", hadoop_streaming)}
+    if (!nzchar(hadoop_home)) hadoop_home = "/usr/lib/hadoop"
+    hadoop_streaming = Sys.glob(file.path(hadoop_home, "contrib", "streaming", "*.jar"))
+  }
+  if (!length(hadoop_streaming) || !file.exists(hadoop_streaming[1]))
+    stop("Please make sure that the env. variables HADOOP_STREAMING or HADOOP_HOME are set correctly")
+
+  ## FIXME: I bet this is missing shQuote()!
+  paste(hadoop.cmd(), "jar", hadoop_streaming[1])
+}
 
 rmr.stream = function(
   map, 
